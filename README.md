@@ -37,10 +37,22 @@
 
 <!-- ═══════════════════════ UNIT 3 — THE BUILD ═══════════════════════ -->
 
+## Milestone 1 Notes
+
+I ran the environment check, inspected the listing and wardrobe fields, reviewed
+six full listings, checked the example queries, and ran the starter agent. The
+starter ran successfully and correctly reported that the planning loop was not
+built yet.
+
 ## What This Does
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
 
+FitFindr accepts a natural-language request such as "vintage graphic tee under
+$30, size M." It searches thrift listings using the requested description, size,
+and maximum price. It selects a matching item, suggests outfits using the user's
+wardrobe, and creates a short caption for the item. If no listing matches, it
+stops and tells the user what search details to change.
 
 
 ---
@@ -59,24 +71,24 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Searches the listings dataset for items matching a description and optional size and price ceiling.
+- **Inputs:** `description` (str), `size` (str or None), `max_price` (float or None).
+- **Returns:** A list of listing dictionaries containing `id`, `title`, `description`, `category`, `style_tags`, `size`, `condition`, `price`, `colors`, `brand`, and `platform`, sorted with the best matches first.
+- **When it has nothing:** Returns an empty list `[]`.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Suggests one or two outfits using the selected listing and the user's wardrobe.
+- **Inputs:** `new_item` (dict), `wardrobe` (dict).
+- **Returns:** A non-empty string containing outfit suggestions.
+- **When it has nothing:** If the wardrobe is empty, returns general styling advice for the selected item.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Creates a short social-media-style caption for the selected item and outfit.
+- **Inputs:** `outfit` (str), `new_item` (dict).
+- **Returns:** A two-to-four-sentence caption mentioning the item, price, platform, and overall style.
+- **When it has nothing:** If the outfit string is empty, returns a descriptive message instead of crashing.
 
 ---
 
