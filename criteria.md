@@ -29,6 +29,10 @@ tool calls and returns a fit card — in at least 4 of 5 tries.
      "my search is a plain keyword match and some phrasings will miss" is a
      real answer. -->
 
+I chose 4 of 5 because the search uses keyword overlap, so an unusual phrasing
+may fail to match even when a related listing exists. The other successful runs
+should still complete all three tools and produce a fit card.
+
 ---
 
 ## 2. An impossible query stops before the second tool
@@ -39,6 +43,10 @@ Given a query that matches no listings, the agent stops before calling
 **Why this target:**
 <!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
      about this path? -->
+
+I chose 5 of 5 because an empty result is a deterministic local-data condition.
+The agent should always stop before calling the next tool and tell the user to
+change the description, size, or price limit.
 
 ---
 
@@ -54,10 +62,16 @@ Given a query that matches no listings, the agent stops before calling
      compares session["selected_item"] against what actually reached
      suggest_outfit is the shape you're after. -->
 
-
+For 5 matching queries, the listing stored in `session["selected_item"]` is the
+same listing passed to `suggest_outfit`, with matching `id`, `title`, and `price`
+fields in every run.
 
 **Why this target:**
 
+This target checks the state handoff directly instead of assuming that a
+successful outfit suggestion used the right item. Five out of five is
+reasonable because the session is controlled by the agent and should not vary
+with model wording.
 
 
 ---
@@ -75,10 +89,14 @@ Given a query that matches no listings, the agent stops before calling
      sentence? A card longer than a caption anyone would post? Any of those can
      be turned into a number. -->
 
-
+For 4 of 5 matching queries, the fit card is between two and four sentences and
+mentions the selected item's title, price, and platform.
 
 **Why this target:**
 
+The model may vary its wording, so I am measuring required content and length
+instead of requiring identical text. Four out of five allows for occasional
+model formatting variation while still requiring most captions to be usable.
 
 
 ---
@@ -92,10 +110,14 @@ Given a query that matches no listings, the agent stops before calling
      search respects a price ceiling — anything, as long as it names a number
      or an observable outcome. -->
 
-
+For 5 of 5 searches with a maximum price, every returned listing has a price
+less than or equal to that maximum price.
 
 **Why this target:**
 
+The maximum price is a direct filter in the local listings data, so every result
+should obey it. I chose five out of five because returning an over-budget item
+would make the search misleading and is not dependent on model variability.
 
 
 ---
