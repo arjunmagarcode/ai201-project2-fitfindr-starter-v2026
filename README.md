@@ -105,13 +105,23 @@ stops and tells the user what search details to change.
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If `search_listings` returns an empty list, the agent stores an
+actionable message in `session["error"]` and stops before calling the model
+tools. Otherwise, it stores the first result in `session["selected_item"]`,
+passes that item to `suggest_outfit`, and then passes the outfit and the same
+item to `create_fit_card`.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** Regular expressions extract a maximum price after
+phrases such as `under` or `below` and a size after `size`. The remaining text
+becomes the listing description.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** The parsed description, size, and maximum
+price go into `session["parsed"]`; search results go into
+`session["search_results"]`; the first result goes into
+`session["selected_item"]`; then the outfit string and fit-card caption go into
+`session["outfit_suggestion"]` and `session["fit_card"]`.
 
 ---
 
@@ -125,7 +135,15 @@ stops and tells the user what search details to change.
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
+
+Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+Outfit:   Here are two practical outfit suggestions using your new Y2K baby tee:
+Outfit 1: Classic Y2K Streetwear using baggy straight-leg jeans, chunky white sneakers, and a black crossbody bag.
+Outfit 2: Edgy Contrast using a vintage black denim jacket, wide-leg khaki trousers, and black combat boots.
+
+Fit card: Serving major 2000s pop princess energy with this Y2K Baby Tee — Butterfly Print! Styled with baggy denim and chunky sneakers for the ultimate nostalgic streetwear vibe. Snagged this absolute steal on Depop for just $18.00!
 
 ```
 
