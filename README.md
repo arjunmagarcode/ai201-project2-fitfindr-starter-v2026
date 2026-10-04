@@ -186,15 +186,27 @@ Nothing beats the character of broken-in denim. I just scored these Vintage Levi
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked for help turning the three required tools into a
+     precise Tool Inventory with typed inputs, specific return values, and empty
+     cases.
+- *What came back:* The suggested specification required `search_listings` to
+     return listing dictionaries and `[]` when there were no matches, while the
+     model-backed tools had defined strings and explicit empty-input behavior.
+- *What I changed:* I added those specifications to the README before building
+     the tools, including whole-token size matching for values such as `M` and
+     `S/M`.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked for help implementing the planning loop so it
+     would branch on empty search results and carry the selected listing through
+     session state.
+- *What came back:* The suggested design used regular expressions for price and
+     size parsing, stored every tool result in the session, and stopped with an
+     actionable message when search returned an empty list.
+- *What I changed:* I implemented that design in `agent.py::run_agent`, then
+     verified that matching queries complete all three tools and impossible queries
+     leave `session["fit_card"]` as `None`.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
