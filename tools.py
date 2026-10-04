@@ -25,6 +25,20 @@ from generate import generate
 from utils.data_loader import load_listings
 
 
+def _words(value: str) -> list[str]:
+    """Return searchable lowercase words and numbers from a value."""
+    import re
+
+    return re.findall(r"[a-z0-9]+", value.lower())
+
+
+def _size_matches(listing_size: str, requested_size: str) -> bool:
+    """Match complete size tokens so `M` does not match `XL` or `US 9`."""
+    listing_tokens = set(_words(listing_size))
+    requested_tokens = _words(requested_size)
+    return bool(requested_tokens) and all(token in listing_tokens for token in requested_tokens)
+
+
 # ── Tool 1: search_listings ───────────────────────────────────────────────────
 
 def search_listings(
@@ -78,8 +92,31 @@ def search_listings(
     Test it from a terminal before you move on:
         python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
     """
-    # TODO: replace this with your implementation
-    return []
+    keywords = set(_words(description))
+    matches = []
+
+    for listing in load_listings():
+        if max_price is not None and listing["price"] > max_price:
+            continue
+        if size is not None and not _size_matches(listing["size"], size):
+            continue
+
+        searchable = " ".join(
+            [
+                listing["title"],
+                listing["description"],
+                listing["category"],
+                " ".join(listing["style_tags"]),
+                " ".join(listing["colors"]),
+                listing.get("brand") or "",
+            ]
+        )
+        score = sum(keyword in set(_words(searchable)) for keyword in keywords)
+        if score:
+            matches.append((score, listing))
+
+    matches.sort(key=lambda result: (-result[0], result[1]["price"], result[1]["id"]))
+    return [listing for _, listing in matches[: config.SEARCH_RESULT_LIMIT]]
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
@@ -112,8 +149,26 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
     Test it from a terminal before you move on:
         python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    if not wardrobe.get("items"):
+        prompt = (
+            "Suggest one or two general outfit ideas for this thrift listing. "
+            "The user has no saved wardrobe, so recommend pieces and explain "
+            "the styling direction.\n\n"
+            f"New item: {new_item}"
+        )
+    else:
+        prompt = (
+            "Suggest one or two outfits for this new thrift item using pieces "
+            "from the user's wardrobe. Name the wardrobe pieces you use and "
+            "briefly explain why they work together.\n\n"
+            f"New item: {new_item}\n"
+            f"User wardrobe: {wardrobe['items']}"
+        )
+
+    return generate(
+        prompt,
+        system="Give practical, specific outfit suggestions in a concise format.",
+    )
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
@@ -152,5 +207,18 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     Test it from a terminal before you move on:
         python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
     """
-    # TODO: replace this with your implementation
-    return ""
+    if not outfit.strip():
+        return "No fit card was created because there was no outfit suggestion."
+
+    prompt = (
+        "Write a short social-media caption of two to four sentences for this "
+        "thrift find. Mention the item's title, price, and platform once each, "
+        "and describe the outfit's vibe. Make it sound like a real post, not a "
+        "product listing.\n\n"
+        f"Item: {new_item}\n"
+        f"Outfit suggestion: {outfit}"
+    )
+    return generate(
+        prompt,
+        system="Write an appealing but concise thrift-fashion caption.",
+    )

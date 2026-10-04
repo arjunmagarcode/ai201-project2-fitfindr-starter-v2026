@@ -132,17 +132,26 @@ $ python app.py ask '...'
 **The three tools, tested one at a time**
 
 ```
-$ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
+$ python -c "from tools import search_listings; print([item['id'] for item in search_listings('graphic tee', max_price=30)])"
+['lst_017', 'lst_002', 'lst_033', 'lst_006', 'lst_015', 'lst_011']
 
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_empty_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_empty_wardrobe()))"
+**Look 1: Casual Streetwear**
+* **Pieces:** Oversized graphic tee, white leather retro sneakers, and a canvas tote bag.
+* **Styling Direction:** Lean into the vintage, laid-back vibe.
+
+**Look 2: Elevated Casual**
+* **Pieces:** A fitted black baby tee or tank top, an oversized black blazer, and black loafers or ankle boots.
+* **Styling Direction:** Contrast the casual denim with sharp tailoring.
 
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+Nothing beats the character of broken-in denim. I just scored these Vintage Levi's 501 Jeans — Medium Wash for $38.0 over on Depop, and they have an effortless streetwear vibe. Paired with crisp white sneakers, this is my go-to uniform all season long!
 
 ```
 
