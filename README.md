@@ -208,6 +208,17 @@ Nothing beats the character of broken-in denim. I just scored these Vintage Levi
      verified that matching queries complete all three tools and impossible queries
      leave `session["fit_card"]` as `None`.
 
+**Moment 3**
+
+- *What I asked for:* I asked AI to help interpret the repeated fit-card
+     outputs and identify a single change that addressed the observed miss.
+- *What came back:* The miss was at the model-output step: the model sometimes
+     paraphrased the selected listing title even though the tool and session
+     state were correct.
+- *What I changed:* I tightened the `create_fit_card` prompt to require the
+     exact title, numeric price, and platform spelling, then reran all five
+     scenarios five times and recorded the before and after reports.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -228,17 +239,49 @@ Nothing beats the character of broken-in denim. I just scored these Vintage Levi
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Full three-tool run returns a fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Empty search stops before tool 2 | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Item in session matches item passed on | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card mentions title, price, and platform | 4 of 5 | PASS | PASS | PASS | PASS | FAIL | MET (4/5) |
+| 5. Over-budget query returns nothing over the limit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
 **Real output from one try**, pasted as text, naming the file and function
 that produced it:
 
 ```
+Source: results/run_2026-10-11_1837_before.md, produced by run_eval.py::main
+Loop: agent.py::run_agent
 
+matching query completes, Try 1:
+- stopped early: no
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+- search_results: 10
+Fit card:
+Found the ultimate Y2K Baby Tee — Butterfly Print for just $18 over on depop,
+and I am officially obsessed! It’s giving total early 2000s nostalgic
+streetwear when paired with baggy denim and chunky sneakers. Snagged a serious
+wardrobe staple today! 🦋✨
+
+impossible query stops early, Try 1:
+- stopped early: yes — No listings matched those filters. Try changing the description, size, or maximum price.
+- selected_item: (none)
+- search_results: 0
+
+selected item handoff, Try 1:
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+- search_results: 10
+Trace: [1] search_listings (via MCP), [2] suggest_outfit, [3] create_fit_card
+
+fit card content, Try 5:
+Fit card:
+Found this dreamy Y2K Butterfly Baby Tee and I am officially obsessed with the
+nostalgic early-2000s energy! Styled it with baggy denim and chunky sneakers for
+the ultimate casual street vibe. Snagged it on Depop for just $18—such a good score. 🦋✨
+
+price ceiling, Try 1:
+- selected_item: Mesh Long-Sleeve Top — Black ($15.0, depop)
+- search_results: 6
+All six returned listings were at or below $30.
 ```
 
 ---
@@ -271,6 +314,31 @@ that produced it:
 
 **Diagnoses**
 
+1. **Criterion 1 — MET (5/5):** The MCP search call returned results and the
+     loop reached `suggest_outfit` and `create_fit_card` on every try. No miss.
+2. **Criterion 2 — MET (5/5):** The search tool returned `[]` every time. The
+     empty-results branch in `agent.py::run_agent` set an actionable error and
+     returned before either model tool. No miss.
+3. **Criterion 3 — MET (5/5):** The session selected the first MCP result on
+     every run, and the trace showed that same item entering `suggest_outfit`.
+     No session handoff miss occurred.
+4. **Criterion 4 — MET (4/5):** The miss was in the model output step on Try
+     5. The caption called the item “Y2K Butterfly Baby Tee” instead of the
+     selected title “Y2K Baby Tee — Butterfly Print”; price and platform were
+     present. The tools and session were correct, but the prompt only said to
+     mention the title and allowed the model to paraphrase it.
+5. **Criterion 5 — MET (5/5):** Search filtering returned six items for the
+     `$30` query and every recorded price was at or below the ceiling. No miss.
+
+The three deliberate failure checks were also recorded. An impossible search
+returned: “No listings matched those filters. Try changing the description,
+size, or maximum price.” An empty wardrobe returned general styling advice and
+still produced a fit card. With `GEMINI_API_KEY=invalid-key-for-unit-test`, the
+agent returned: “The outfit model is unavailable: The model rejected your API
+key. Check GEMINI_API_KEY in your .env file, or create a fresh key at
+aistudio.google.com. Check your API key or network connection and try again.”
+No raw traceback was shown.
+
 
 
 ---
@@ -290,21 +358,39 @@ that produced it:
 **Happy path**
 
 ```
-
+[1] search_listings (via MCP)
+     in:  dict with keys: description, size, max_price
+     out: 10 items: Y2K Baby Tee — Butterfly Print, Vintage Band Tee — Faded Grey, Graphic Tee — 2003 Tour Bootleg Style … +7 more
+[2] suggest_outfit
+     in:  dict with keys: new_item, wardrobe
+     out: Here are two practical outfit suggestions using your new Y2K baby tee…
+[3] create_fit_card
+     in:  dict with keys: outfit, new_item
+     out: Serving major 2000s pop princess energy with this Y2K Baby Tee — Butterfly Print…
 ```
 
 **Empty search**
 
 ```
-
+[1] search_listings (via MCP)
+     in:  dict with keys: description, size, max_price
+     out: [] (empty)
+[2] search branch
+     in:  dict with keys: search_results
+     out: No listings matched those filters. Try changing the description, size, or maximum price.
+     →    empty results: stopping before model tools
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
+On the MCP move:** <!-- what changed in your code, and whether anything
 behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->
 
-
+`mcp_server.py` now exposes `search_listings` with typed `description`, `size`,
+and `max_price` inputs. `agent.py::run_agent` calls it through
+`mcp_client.call_tool`; the other two tools remain direct calls. `python
+mcp_client.py` listed the tool and matching queries returned the same listing
+shape as the direct implementation.
 
 ---
 
@@ -317,20 +403,30 @@ full. -->
 
 **What I changed:**
 
+I changed only the `create_fit_card` prompt in `tools.py` to require the exact
+listing title, numeric price, and platform spelling once each.
+
 **Which failure it was meant to fix:**
+
+Criterion 4's baseline miss came from model paraphrasing the selected title.
+The search tool and session were already correct, so tightening the prompt was
+the smallest change aimed at the model-output step.
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Full three-tool run returns a fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Empty search stops before tool 2 | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Item in session matches item passed on | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card mentions title, price, and platform | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Over-budget query returns nothing over the limit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
 **Did it help, and how do I know:**
-
+Yes. The same five scenarios ran five times again in
+`results/run_2026-10-11_1845_after.md`. Criterion 4 rose from 4/5 to 5/5;
+criteria 1, 2, 3, and 5 stayed at 5/5. The change helped the diagnosed model
+output problem without changing the search or loop behavior.
 <!-- If it made things worse, say that. Honestly reported, that earns full
      credit and is more interesting than one that worked. -->
 
@@ -343,7 +439,11 @@ full. -->
 <!-- For each criterion still missed: what you'd do, and why you stopped where
      you did. "I ran out of time" is fine if it's true. Pretending nothing is
      left is not. -->
-
+No acceptance criterion remained missed after the improvement. The model can
+still vary its wording, and the invalid-key path is only manually triggered,
+not part of the five scored scenarios. A next improvement would add automated
+assertions over the trace and failure messages, but I stopped after the one
+prompt change required for this unit so the measurement stays attributable.
 
 
 <!-- ═════════════════════════════════════════════════════════════════════
