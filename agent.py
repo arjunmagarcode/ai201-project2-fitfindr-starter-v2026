@@ -17,7 +17,8 @@ import re
 
 import config
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card
+from mcp_client import MCPError, call_tool
+from tools import suggest_outfit, create_fit_card
 from generate import ModelUnavailable
 
 
@@ -147,33 +148,77 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
         if not session["search_results"]:
             parsed = session["parsed"]
-            results = search_listings(
-                parsed["description"],
-                parsed["size"],
-                parsed["max_price"],
-            )
+            search_inputs = {
+                "description": parsed["description"],
+                "size": parsed["size"],
+                "max_price": parsed["max_price"],
+            }
+            try:
+                results = call_tool("search_listings", search_inputs)
+            except MCPError as exc:
+                session["error"] = (
+                    f"The listing search could not be reached over MCP: {exc} "
+                    "Check the MCP server and try again."
+                )
+                trace.step("search_listings (via MCP)", search_inputs, exc, "MCP failure")
+                return session
             session["search_results"] = results
+            trace.step("search_listings (via MCP)", search_inputs, results)
             if not results:
                 session["error"] = (
                     "No listings matched those filters. Try changing the "
                     "description, size, or maximum price."
+                )
+                trace.step(
+                    "search branch",
+                    inputs={"search_results": results},
+                    returned=session["error"],
+                    note="empty results: stopping before model tools",
                 )
                 return session
             session["selected_item"] = results[0]
             continue
 
         if session["outfit_suggestion"] is None:
-            session["outfit_suggestion"] = suggest_outfit(
-                session["selected_item"],
-                session["wardrobe"],
-            )
+            outfit_inputs = {
+                "new_item": session["selected_item"],
+                "wardrobe": session["wardrobe"],
+            }
+            try:
+                outfit = suggest_outfit(
+                    session["selected_item"],
+                    session["wardrobe"],
+                )
+            except ModelUnavailable as exc:
+                session["error"] = (
+                    f"The outfit model is unavailable: {exc} "
+                    "Check your API key or network connection and try again."
+                )
+                trace.step("suggest_outfit", outfit_inputs, exc, "model unavailable")
+                return session
+            session["outfit_suggestion"] = outfit
+            trace.step("suggest_outfit", outfit_inputs, outfit)
             continue
 
         if session["fit_card"] is None:
-            session["fit_card"] = create_fit_card(
-                session["outfit_suggestion"],
-                session["selected_item"],
-            )
+            card_inputs = {
+                "outfit": session["outfit_suggestion"],
+                "new_item": session["selected_item"],
+            }
+            try:
+                fit_card = create_fit_card(
+                    session["outfit_suggestion"],
+                    session["selected_item"],
+                )
+            except ModelUnavailable as exc:
+                session["error"] = (
+                    f"The fit-card model is unavailable: {exc} "
+                    "Check your API key or network connection and try again."
+                )
+                trace.step("create_fit_card", card_inputs, exc, "model unavailable")
+                return session
+            session["fit_card"] = fit_card
+            trace.step("create_fit_card", card_inputs, fit_card)
             return session
 
 
